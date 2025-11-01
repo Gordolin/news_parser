@@ -1,0 +1,24 @@
+# Sphinx-Dokumentation Build-Output
+venv/
+# Python Cache-Dateien
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Temporäre Dateien
+*.bak
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Editor-spezifische Dateien
+.vscode/
+.idea/
+*.code-workspace
+
+toolbox/counter_state.json
+*.jar
+*.exe
+node_modules/
+@eaDir/

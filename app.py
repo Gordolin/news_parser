@@ -22,12 +22,11 @@ from core.parser import parse_articles_from_text, validate_and_correct_categorie
 from core.processor import (
     create_working_copy, extract_year_month, generate_output, update_working_copy
 )
-from core.utils import get_base_dir
+from core.utils import OUTPUT_DIR
 
 # --- Init ---
 st.set_page_config(page_title="News Parser", layout="wide")
 init_state()
-OUTPUT_DIR = get_base_dir()
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # --- Hilfsfunktionen ---
@@ -66,8 +65,8 @@ if uploaded is not None:
             try:
                 year, month = extract_year_month(st.session_state.src_text)
                 wp = create_working_copy(st.session_state.src_text, st.session_state.file_name, OUTPUT_DIR)
-                logger.info(f"Working Copy erstellt: {os.path.basename(wp)}")  # LOG
-                articles = parse_articles_from_text(open(wp, "r", encoding="utf-8").read())
+                articles = parse_articles_from_text(open(wp, "r", encoding="utf-8").read())  # Löst Debug-Files aus
+                logger.info(f"PARSING ABGESCHLOSSEN: {len(articles)} Artikel, siehe debug/ Ordner.")
                 corr = validate_and_correct_categories(articles)
 
                 grouped = {}
@@ -125,22 +124,26 @@ if st.session_state.grouped:
                 try:
                     current_articles = parse_articles_from_text(open(st.session_state.working_path, "r", encoding="utf-8").read())
                     selected = [a for a in current_articles if a["title"] in selected_titles]
-                    out_path = generate_output(selected, out_title, int(year), int(month), OUTPUT_DIR)
-                    logger.info(f"Output-Datei erstellt: {os.path.basename(out_path)}")  # LOG
+                    out_path = generate_output(selected, out_title, int(year), int(month), OUTPUT_DIR)  # Params bleiben, aber ignoriert im Raw
+                    logger.info(f"Output-Datei erstellt: {os.path.basename(out_path)}")
                     update_working_copy(st.session_state.working_path, selected_titles)
 
-                    # Session-spezifisch speichern
                     st.session_state.last_output = os.path.basename(out_path)
 
-                    time.sleep(1.2)  # Kurze Pause für Sichtbarkeit
+                    time.sleep(1.2)
 
-                    # UI aktualisieren
+                    # UI aktualisieren (Parsing nur für UI)
                     new_articles = parse_articles_from_text(open(st.session_state.working_path, "r", encoding="utf-8").read())
+                    corr = validate_and_correct_categories(new_articles)
+
                     new_grouped = {}
                     for a in new_articles:
                         for c in (a["categories"] or ["Unkategorisiert"]):
                             new_grouped.setdefault(c, []).append(a)
-                    st.session_state.grouped = new_grouped
+                    st.session_state.update({
+                        "grouped": new_grouped,
+                        "corrections_str": corr
+                    })
                     st.rerun()
 
                 except Exception as e:

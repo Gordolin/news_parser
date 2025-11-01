@@ -6,6 +6,14 @@ from typing import List
 
 def get_base_dir() -> str:
     return os.environ.get("NEWS_PARSER_BASE_DIR", r"C:\users\hager\tmp\parse_news")
+
+# NEU: Zentrale Konstante für OUTPUT_DIR (basierend auf get_base_dir)
+OUTPUT_DIR = get_base_dir()
+
+# NEU: Debug-Ordner (wird in parser.py verwendet)
+DEBUG_DIR = os.path.join(OUTPUT_DIR, "debug")
+os.makedirs(DEBUG_DIR, exist_ok=True)  # Erstelle bei Import
+
 def slugify(title: str) -> str:
     s = re.sub(r"\s+", "_", title.strip().lower())
     s = re.sub(r"[^a-z0-9_]", "", s)
