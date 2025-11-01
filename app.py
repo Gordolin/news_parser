@@ -22,6 +22,9 @@ from core.parser import parse_articles_from_text, validate_and_correct_categorie
 from core.processor import (
     create_working_copy, extract_year_month, generate_output, update_working_copy
 )
+from core.output_processor import(
+    step1_remove_single_empty_line_after_text
+)
 from core.utils import OUTPUT_DIR
 
 # --- Init ---
@@ -127,6 +130,18 @@ if st.session_state.grouped:
                     out_path = generate_output(selected, out_title, int(year), int(month), OUTPUT_DIR)  # Params bleiben, aber ignoriert im Raw
                     logger.info(f"Output-Datei erstellt: {os.path.basename(out_path)}")
                     update_working_copy(st.session_state.working_path, selected_titles)
+
+                    ##########################
+                    # Parsen des Output Files
+                    ##########################
+
+                    # Step 1: Entferne eine Leerzeile nach jedem Textzeile, wenn vorhanden
+                    with open(out_path, "r", encoding="utf-8") as f:
+                        raw_output = f.read()
+                    processed_output = step1_remove_single_empty_line_after_text(raw_output)
+                    with open(out_path, "w", encoding="utf-8") as f:
+                        f.write(processed_output)
+                    logger.info(f"Output post-prozessiert (Schritt 1): {os.path.basename(out_path)}")
 
                     st.session_state.last_output = os.path.basename(out_path)
 
