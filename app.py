@@ -24,7 +24,8 @@ from core.processor import (
 )
 from core.output_processor import(
     step1_remove_single_empty_line_after_text,
-    step2_ensure_empty_lines_around_headings
+    step2_ensure_empty_lines_around_headings,
+    step3_ensure_empty_lines_around_comments
 )
 from core.utils import OUTPUT_DIR
 
@@ -136,21 +137,29 @@ if st.session_state.grouped:
                     # Parsen des Output Files
                     ##########################
 
-                    # Post-Processing: Schritte 1 + 2 auf dem Output-File
+                    # Post-Processing: Schritte 1 + 2 + 3 auf dem Output-File
                     with open(out_path, "r", encoding="utf-8") as f:
                         raw_output = f.read()
-                    
+
+                    logger.info(f"Raw Output Länge vor Processing: {len(raw_output)}")
+
                     # Schritt 1: Leerzeilen nach Textzeilen reduzieren
                     processed_step1 = step1_remove_single_empty_line_after_text(raw_output)
-                    
+                    logger.info(f"Nach Schritt 1 Länge: {len(processed_step1)}")
+
                     # Schritt 2: Leerzeilen um Überschriften sicherstellen
                     processed_step2 = step2_ensure_empty_lines_around_headings(processed_step1)
-                    
-                    # Final: Überschreibe Output mit verarbeitetem Text
+                    logger.info(f"Nach Schritt 2 Länge: {len(processed_step2)}")
+
+                    # Schritt 3: Leerzeilen um Kommentare (mit Debug)
+                    processed_step3 = step3_ensure_empty_lines_around_comments(processed_step2)
+                    logger.info(f"Nach Schritt 3 Länge: {len(processed_step3)} – Leerzeilen um Kommentare hinzugefügt, falls nötig")
+
+                    # Final: Überschreibe Output
                     with open(out_path, "w", encoding="utf-8") as f:
-                        f.write(processed_step2)
-                    
-                    logger.info(f"Output post-prozessiert (Schritte 1+2): {os.path.basename(out_path)}")
+                        f.write(processed_step3)
+
+                    logger.info(f"Output post-prozessiert (Schritte 1+2+3): {os.path.basename(out_path)}")
 
                     st.session_state.last_output = os.path.basename(out_path)
 
