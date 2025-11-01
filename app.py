@@ -25,7 +25,10 @@ from core.processor import (
 from core.output_processor import(
     step1_remove_single_empty_line_after_text,
     step2_ensure_empty_lines_around_headings,
-    step3_ensure_empty_lines_around_comments
+    step3_ensure_empty_lines_around_comments,
+    step4_add_frontmatter,
+    step5_remove_date_after_heading,
+    step6_remove_placeholder_link_shortcodes
 )
 from core.utils import OUTPUT_DIR
 
@@ -143,23 +146,35 @@ if st.session_state.grouped:
 
                     logger.info(f"Raw Output Länge vor Processing: {len(raw_output)}")
 
+                    # Schritt 4 zuerst: Frontmatter hinzufügen (extrahiert aus raw)
+                    processed_step1 = step4_add_frontmatter(raw_output, out_title, int(year), int(month))
+                    logger.info(f"Nach Schritt 4 Länge: {len(processed_step1)} (Frontmatter hinzugefügt)")
+
                     # Schritt 1: Leerzeilen nach Textzeilen reduzieren
-                    processed_step1 = step1_remove_single_empty_line_after_text(raw_output)
-                    logger.info(f"Nach Schritt 1 Länge: {len(processed_step1)}")
+                    processed_step2 = step1_remove_single_empty_line_after_text(processed_step1)
+                    logger.info(f"Nach Schritt 1 Länge: {len(processed_step2)}")
 
                     # Schritt 2: Leerzeilen um Überschriften sicherstellen
-                    processed_step2 = step2_ensure_empty_lines_around_headings(processed_step1)
+                    processed_step3 = step2_ensure_empty_lines_around_headings(processed_step2)
                     logger.info(f"Nach Schritt 2 Länge: {len(processed_step2)}")
 
-                    # Schritt 3: Leerzeilen um Kommentare (mit Debug)
-                    processed_step3 = step3_ensure_empty_lines_around_comments(processed_step2)
-                    logger.info(f"Nach Schritt 3 Länge: {len(processed_step3)} – Leerzeilen um Kommentare hinzugefügt, falls nötig")
+                    # Schritt 3: Leerzeilen um Kommentare
+                    processed_step4 = step3_ensure_empty_lines_around_comments(processed_step3)
+                    logger.info(f"Nach Schritt 3 Länge: {len(processed_step3)}")
+
+                    # NEU: Schritt 5: Date-Zusatz entfernen
+                    processed_step5 = step5_remove_date_after_heading(processed_step4)
+                    logger.info(f"Nach Schritt 5 Länge: {len(processed_step5)}")
+
+                    # NEU: Schritt 5: Date-Zusatz entfernen
+                    processed_step6 = step6_remove_placeholder_link_shortcodes(processed_step5)
+                    logger.info(f"Nach Schritt 6 Länge: {len(processed_step6)}")
 
                     # Final: Überschreibe Output
                     with open(out_path, "w", encoding="utf-8") as f:
-                        f.write(processed_step3)
+                        f.write(processed_step6)
 
-                    logger.info(f"Output post-prozessiert (Schritte 1+2+3): {os.path.basename(out_path)}")
+                    logger.info(f"Output post-prozessiert (Schritte 4+1+2+3): {os.path.basename(out_path)}")
 
                     st.session_state.last_output = os.path.basename(out_path)
 

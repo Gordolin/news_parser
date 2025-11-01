@@ -2,6 +2,23 @@
 import re
 from typing import List
 
+def build_frontmatter(title: str, year: int, month: int, categories: List[str], tags: List[str], orte: List[str]) -> str:
+    date_str = f"{year}-{month:02d}-20T12:23:04+02:00"
+    cats = ", ".join(sorted(set(c for c in categories if c)))
+    tags_s = ", ".join(sorted(set(t for t in tags if t)))
+    orte_s = ", ".join(sorted(set(o for o in orte if o)))
+    return f"""---
+title: "{title}"
+date: {date_str}
+series: [Blog, Kurznachrichten]
+categories: [{cats}]
+tags: [{tags_s}]
+orte: [{orte_s}]
+media:
+    path: "http://kastl/blog-bf/news/{year}/{month:02d}/"
+layout: card-columns
+---
+"""
 def step1_remove_single_empty_line_after_text(text: str) -> str:
     """
     Schritt 1: Nach jeder Textzeile (nicht-leer) eine Leerzeile entfernen, wenn vorhanden.
@@ -51,12 +68,6 @@ def step2_ensure_empty_lines_around_headings(text: str) -> str:
             result_lines.append(line)
     return ''.join(result_lines)
 
-# core/output_processor.py
-import re
-from typing import List
-
-# ... (step1 und step2 unverändert)
-
 def step3_ensure_empty_lines_around_comments(text: str) -> str:
     """
     Schritt 3: Stelle sicher, dass vor jedem Kommentar-Beginn (<!-- am Zeilenanfang) und nach jedem Ende (--> am Zeilenanfang) mindestens eine Leerzeile steht.
@@ -85,21 +96,59 @@ def step3_ensure_empty_lines_around_comments(text: str) -> str:
             i += 1
     return ''.join(result_lines)
 
-# Beispiel-Test (entferne nach Implementierung oder teste lokal)
-if __name__ == "__main__":
-    example_text = """###### Zalando
-<!--categories: Wirtschaft
-tags: Migration
--->
-{{< my_media src="202510-10.avif" / >}}Direkt nach Kommentar-Ende
+def step4_add_frontmatter(text: str, title: str, year: int, month: int) -> str:
+    """
+    Schritt 4: Extrahiere Cats/Tags/Orte aus Kommentar-Blöcken und hänge Frontmatter vorne an.
+    - Sammle alle einzigartigen aus <!-- ... -->.
+    - Baue YAML mit build_frontmatter und füge vorne an.
+    """
+    # Extrahiere Cats/Tags/Orte aus allen Kommentar-Blöcken
+    all_cats = set()
+    all_tags = set()
+    all_orte = set()
+    
+    # Regex für Kommentar-Inhalt (multiline)
+    comment_matches = re.findall(r'<!--\s*(.*?)\s*-->', text, re.DOTALL)
+    for comment in comment_matches:
+        # Parse lines in comment
+        for line in comment.splitlines():
+            line = line.strip()
+            if line.lower().startswith('categories:'):
+                cats = [c.strip() for c in line.split(':', 1)[1].split(',') if c.strip()]
+                all_cats.update(cats)
+            elif line.lower().startswith('tags:'):
+                tags = [t.strip() for t in line.split(':', 1)[1].split(',') if t.strip()]
+                all_tags.update(tags)
+            elif line.lower().startswith('orte:'):
+                orte = [o.strip() for o in line.split(':', 1)[1].split(',') if o.strip()]
+                all_orte.update(orte)
+    
+    # Baue Frontmatter
+    fm = build_frontmatter(title, year, month, list(all_cats), list(all_tags), list(all_orte))
+    
+    # Füge vorne an (mit \n\n für Abstand)
+    return fm + "\n\n" + text
 
-Text mit Absatz
+def step5_remove_date_after_heading(text: str) -> str:
+    """
+    Entfernt '(*Date*)' wenn es direkt am Ende einer '######' Überschrift steht.
+    Beispiel: '###### Nachricht 3 (*Date*)' -> '###### Nachricht 3'
+    (case-insensitive, mehrere Whitespace-Varianten unterstützt)
+    """
+    return re.sub(
+        r'(?im)^(######\s*.*?)\s*\(\*date\*\)\s*(?:\r?\n|$)',
+        r'\1\n',
+        text
+    )
 
-###### Nachricht 3
-Hier Kommentar direkt: <!--tags: Test-->
-Satz direkt danach ohne Leerzeile
-"""
-    step1 = step1_remove_single_empty_line_after_text(example_text)
-    step2 = step2_ensure_empty_lines_around_headings(step1)
-    step3 = step3_ensure_empty_lines_around_comments(step2)
-    print("Nach Schritt 1+2+3 (Leerzeile nach --> hinzugefügt):\n", repr(step3))
+def step6_remove_placeholder_link_shortcodes(text: str) -> str:
+    """
+    Entfernt exakt Zeilen, die nur '{{< my_link url="Link" >}}' (mit beliebigen Spaces/Tabs) enthalten.
+    - Löscht die komplette Zeile inkl. Newline.
+    - Belässt Zeilen, in denen der Token nur Teil der Zeile ist.
+    """
+    return re.sub(
+        r'(?m)^[ \t]*\{\{<\s*my_link\s+url="Link"\s*>\}\}\s*(?:\r?\n|$)',
+        '',
+        text
+    )
