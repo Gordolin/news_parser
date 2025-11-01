@@ -33,8 +33,16 @@ def extract_year_month(text: str) -> tuple[int, int]:
     return (int(path_match.group(1)), int(path_match.group(2))) if path_match else (2025, 10)
 
 def generate_output(selected: List[Dict], title: str, year: int, month: int, base_dir: str) -> str:
-    """RAW: Concat raw-Blöcke aus selected 1:1 – KEIN FM, KEINE Änderung! (Bleibt unverändert)"""
-    raw_content = "".join(a["raw"] for a in selected)  # Exakt, Whitespace bleibt
+    """RAW: Concat raw-Blöcke aus selected mit <!--split--> dazwischen – KEIN FM, KEINE Änderung!"""
+    if not selected:
+        return None
+    
+    # Sammle raw-Blöcke
+    raw_blocks = [a["raw"] for a in selected]
+    
+    # NEU: Join mit Split-Marker für Trennung (inkl. Leerzeilen)
+    raw_content = "\n\n<!--split-->\n\n".join(raw_blocks)
+    
     slug = slugify(title)
     path = os.path.join(base_dir, f"{slug}.md")
     with open(path, "w", encoding="utf-8") as f:
