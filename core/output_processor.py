@@ -30,3 +30,23 @@ def step1_remove_single_empty_line_after_text(text: str) -> str:
             i += 1
     
     return ''.join(result_lines)
+
+def step2_ensure_empty_lines_around_headings(text: str) -> str:
+    """
+    Schritt 2: Stelle sicher, dass vor und nach jeder Überschrift (###### Titel) mindestens eine Leerzeile steht.
+    - Vor: Füge \n hinzu, nur wenn vorherige Zeile nicht leer (vermeidet Duplizierung nach Split).
+    - Nach: Füge genau eine \n hinzu (ergibt Leerzeile nach Header).
+    """
+    lines = text.splitlines(keepends=True)
+    result_lines = []
+    for i, line in enumerate(lines):
+        if line.strip().startswith('######'):
+            # Vor Header: Füge \n hinzu, nur wenn vorherige Zeile nicht leer
+            if i > 0 and lines[i-1].strip():
+                result_lines.append('\n')
+            result_lines.append(line)
+            # Nach Header: Immer \n hinzufügen (macht genau eine Leerzeile)
+            result_lines.append('\n')
+        else:
+            result_lines.append(line)
+    return ''.join(result_lines)

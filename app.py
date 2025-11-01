@@ -23,7 +23,8 @@ from core.processor import (
     create_working_copy, extract_year_month, generate_output, update_working_copy
 )
 from core.output_processor import(
-    step1_remove_single_empty_line_after_text
+    step1_remove_single_empty_line_after_text,
+    step2_ensure_empty_lines_around_headings
 )
 from core.utils import OUTPUT_DIR
 
@@ -135,13 +136,21 @@ if st.session_state.grouped:
                     # Parsen des Output Files
                     ##########################
 
-                    # Step 1: Entferne eine Leerzeile nach jedem Textzeile, wenn vorhanden
+                    # Post-Processing: Schritte 1 + 2 auf dem Output-File
                     with open(out_path, "r", encoding="utf-8") as f:
                         raw_output = f.read()
-                    processed_output = step1_remove_single_empty_line_after_text(raw_output)
+                    
+                    # Schritt 1: Leerzeilen nach Textzeilen reduzieren
+                    processed_step1 = step1_remove_single_empty_line_after_text(raw_output)
+                    
+                    # Schritt 2: Leerzeilen um Überschriften sicherstellen
+                    processed_step2 = step2_ensure_empty_lines_around_headings(processed_step1)
+                    
+                    # Final: Überschreibe Output mit verarbeitetem Text
                     with open(out_path, "w", encoding="utf-8") as f:
-                        f.write(processed_output)
-                    logger.info(f"Output post-prozessiert (Schritt 1): {os.path.basename(out_path)}")
+                        f.write(processed_step2)
+                    
+                    logger.info(f"Output post-prozessiert (Schritte 1+2): {os.path.basename(out_path)}")
 
                     st.session_state.last_output = os.path.basename(out_path)
 
