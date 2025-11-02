@@ -152,3 +152,15 @@ def step6_remove_placeholder_link_shortcodes(text: str) -> str:
         '',
         text
     )
+
+def step7_reduce_multiple_empty_lines(text: str) -> str:
+    """
+    Letzter Schritt: Prüfe auf mehr als eine Leerzeile hintereinander (\n\n\n+), und ersetze durch genau eine Leerzeile (\n\n).
+    - Erhalten Absätze, entferne überflüssige Mehrfach-Leerzeilen.
+    """
+    # Regex: 3+ \n ersetzen durch 2 \n (eine Leerzeile)
+    original_len = len(text)
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    matches = original_len - len(text)
+    print(f"DEBUG Step7: {matches} Zeichen Mehrfach-Leerzeilen reduziert (0 = keine)")  # Entferne später
+    return text
