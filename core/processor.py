@@ -4,8 +4,13 @@ import re
 import hashlib
 from datetime import datetime
 from typing import List, Dict, Set
+import logging
+
 from .parser import parse_articles_from_text  # Nutzen für verbleibende raw
 from .utils import build_frontmatter, slugify  # Nicht für Raw-Output
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
 
 def create_working_copy(src_text: str, file_name: str, base_dir: str) -> str:
     """RAW: Entferne Frontmatter + alles vor erstem ###### (für 'nur Artikel'), behalte Whitespace danach 1:1."""
@@ -40,13 +45,23 @@ def generate_output(selected: List[Dict], title: str, year: int, month: int, bas
     # Sammle raw-Blöcke
     raw_blocks = [a["raw"] for a in selected]
     
-    # NEU: Join mit Split-Marker für Trennung (inkl. Leerzeilen)
+    # Join mit Split-Marker für Trennung (inkl. Leerzeilen)
     raw_content = "\n\n<!--split-->\n\n".join(raw_blocks)
     
     slug = slugify(title)
-    path = os.path.join(base_dir, f"{slug}.md")
+    base_path = os.path.join(base_dir, f"{slug}.md")
+    
+    # FIX: Counter mit führenden Nullen (z.B. _01, _02) für Sortierung, wenn existiert
+    counter = 1
+    while os.path.exists(base_path):
+        counter += 1
+        formatted_counter = f"{counter:02d}"  # Führende Null: 01, 02, ...
+        base_path = os.path.join(base_dir, f"{slug}_{formatted_counter}.md")
+    
+    path = base_path
     with open(path, "w", encoding="utf-8") as f:
         f.write(raw_content)
+    logger.info(f"Output-Datei erstellt (Counter: {formatted_counter if counter > 1 else 'kein'}): {os.path.basename(path)}")
     return path
 
 # core/processor.py
