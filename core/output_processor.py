@@ -2,8 +2,11 @@
 import re
 from typing import List
 
-def build_frontmatter(title: str, year: int, month: int, categories: List[str], tags: List[str], orte: List[str]) -> str:
-    date_str = f"{year}-{month:02d}-20T12:23:04+02:00"
+def build_frontmatter(title: str, date_year: int, date_month: int, date_day: int, media_year: int, media_month: int, categories: List[str], tags: List[str], orte: List[str]) -> str:
+    """
+    Generiert Frontmatter: date mit date_year/month/day, Media-Path mit media_year/month (unabhängig).
+    """
+    date_str = f"{date_year}-{date_month:02d}-{date_day:02d}T00:00:00+02:00"  # Unabhängig: Vollständiges Date
     cats = ", ".join(sorted(set(c for c in categories if c)))
     tags_s = ", ".join(sorted(set(t for t in tags if t)))
     orte_s = ", ".join(sorted(set(o for o in orte if o)))
@@ -15,10 +18,15 @@ categories: [{cats}]
 tags: [{tags_s}]
 orte: [{orte_s}]
 media:
-    path: "http://kastl/blog-bf/news/{year}/{month:02d}/"
+    path: "http://kastl/blog-bf/news/{media_year}/{media_month:02d}/"  # Unabhängig: Nur media_year/month
 layout: card-columns
 ---
 """
+
+def get_last_day_of_month(year: int, month: int) -> int:
+    """Hilfsfunktion: Letzter Tag des Monats (z.B. 31 für Oktober)."""
+    return calendar.monthrange(year, month)[1]
+
 def step1_remove_single_empty_line_after_text(text: str) -> str:
     """
     Schritt 1: Nach jeder Textzeile (nicht-leer) eine Leerzeile entfernen, wenn vorhanden.
@@ -96,21 +104,20 @@ def step3_ensure_empty_lines_around_comments(text: str) -> str:
             i += 1
     return ''.join(result_lines)
 
-def step4_add_frontmatter(text: str, title: str, year: int, month: int) -> str:
+def step4_add_frontmatter(text: str, title: str, date_year: int, date_month: int, date_day: int, media_year: int, media_month: int) -> str:
     """
     Schritt 4: Extrahiere Cats/Tags/Orte aus Kommentar-Blöcken und hänge Frontmatter vorne an.
     - Sammle alle einzigartigen aus <!-- ... -->.
-    - Baue YAML mit build_frontmatter und füge vorne an.
+    - Baue YAML mit build_frontmatter (date & media unabhängig).
     """
     # Extrahiere Cats/Tags/Orte aus allen Kommentar-Blöcken
     all_cats = set()
     all_tags = set()
     all_orte = set()
     
-    # Regex für Kommentar-Inhalt (multiline)
-    comment_matches = re.findall(r'<!--\s*(.*?)\s*-->', text, re.DOTALL)
+    # Robuste Regex für Kommentare
+    comment_matches = re.findall(r'<!--(.*?)-->', text, re.DOTALL)
     for comment in comment_matches:
-        # Parse lines in comment
         for line in comment.splitlines():
             line = line.strip()
             if line.lower().startswith('categories:'):
@@ -123,8 +130,8 @@ def step4_add_frontmatter(text: str, title: str, year: int, month: int) -> str:
                 orte = [o.strip() for o in line.split(':', 1)[1].split(',') if o.strip()]
                 all_orte.update(orte)
     
-    # Baue Frontmatter
-    fm = build_frontmatter(title, year, month, list(all_cats), list(all_tags), list(all_orte))
+    # Baue Frontmatter (date & media unabhängig)
+    fm = build_frontmatter(title, date_year, date_month, date_day, media_year, media_month, list(all_cats), list(all_tags), list(all_orte))
     
     # Füge vorne an (mit \n\n für Abstand)
     return fm + "\n\n" + text

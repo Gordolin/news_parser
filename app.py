@@ -5,6 +5,7 @@ import sys
 import glob
 import time
 import logging  # NEU: Für Konsolen-Logs
+import calendar
 
 # --- Pfad ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -117,13 +118,31 @@ if st.session_state.grouped:
         st.success(f"Korrigiert: {st.session_state.corrections_str}")
 
     with st.expander("Ausgabe-Einstellungen", expanded=True):
-        c1, c2, c3 = st.columns(3)
+        c1, c2, c3, c4 = st.columns(4)
         with c1:
             out_title = st.text_input("Titel", "Kurznachrichten", key="out_title")
         with c2:
-            year = st.number_input("Jahr", value=st.session_state.year, min_value=2000, key="year_in")
+            media_year = st.number_input("mediapath: Jahr", value=st.session_state.year, min_value=2000, key="media_year_in")
         with c3:
-            month = st.number_input("Monat", value=st.session_state.month, min_value=1, max_value=12, key="month_in")
+            media_month = st.number_input("mediapath: Monat", value=st.session_state.month, min_value=1, max_value=12, key="media_month_in")
+        with c4:
+            # Vorschlag berechnen (jetzt mit session_state-Werten, falls Inputs nicht gerendert)
+            media_year_val = st.session_state.get("media_year_in", st.session_state.year)
+            media_month_val = st.session_state.get("media_month_in", st.session_state.month)
+            last_day = calendar.monthrange(int(media_year_val), int(media_month_val))[1]
+            default_date = f"{media_year_val}-{media_month_val:02d}-{last_day:02d}"
+            date_input = st.text_input("Artikeldatum (YYYY-MM-DD)", value=default_date, key="date_in", help="Vorschlag: Letzter Tag des Monats. Überschreibbar – ändert nur date, nicht Media-Path.")
+            # Parse date_input (wenn gerendert)
+            try:
+                date_parts = date_input.split('-')
+                date_year = int(date_parts[0])
+                date_month = int(date_parts[1])
+                date_day = int(date_parts[2])
+                # Überprüfe Gültigkeit
+                if not (date_year >= 2000 and 1 <= date_month <= 12 and 1 <= date_day <= calendar.monthrange(date_year, date_month)[1]):
+                    date_year, date_month, date_day = media_year_val, media_month_val, last_day  # Fallback
+            except:
+                date_year, date_month, date_day = media_year_val, media_month_val, last_day  # Fallback
 
     if st.button("Output erzeugen", type="primary"):
         if not selected_titles:
@@ -133,7 +152,7 @@ if st.session_state.grouped:
                 try:
                     current_articles = parse_articles_from_text(open(st.session_state.working_path, "r", encoding="utf-8").read())
                     selected = [a for a in current_articles if a["title"] in selected_titles]
-                    out_path = generate_output(selected, out_title, int(year), int(month), OUTPUT_DIR)  # Params bleiben, aber ignoriert im Raw
+                    out_path = generate_output(selected, out_title, int(media_year), int(media_month), OUTPUT_DIR)  # Params bleiben, aber ignoriert im Raw
                     logger.info(f"Output-Datei erstellt: {os.path.basename(out_path)}")
                     update_working_copy(st.session_state.working_path, selected_titles)
 
@@ -148,7 +167,7 @@ if st.session_state.grouped:
                     logger.info(f"Raw Output Länge vor Processing: {len(raw_output)}")
 
                     # Schritt 1: Frontmatter hinzufügen (extrahiert aus raw)
-                    processed_step1 = step4_add_frontmatter(raw_output, out_title, int(year), int(month))
+                    processed_step1 = step4_add_frontmatter(raw_output, out_title, date_year, date_month, date_day, media_year, media_month)
                     logger.info(f"Nach Schritt 4 Länge: {len(processed_step1)} (Frontmatter hinzugefügt)")
 
                     # Schritt 2: Leerzeilen nach Textzeilen reduzieren
